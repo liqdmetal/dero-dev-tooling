@@ -6,6 +6,8 @@ description = "Confidential-settlement API for ordinary developers, wrapping der
 
 [dependencies]
 dero-rs = { path = "../dero-rs" }
+hex = "0.4"
+serde_json = "1"
 thiserror = "2"
 
 [dev-dependencies]

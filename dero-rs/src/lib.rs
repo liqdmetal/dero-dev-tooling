@@ -25,7 +25,7 @@
 
 /// Low-level DERO consensus crypto, re-exported from the diff-verified
 /// [`dero-crypto`] crate.
-pub use dero_crypto::{block, bulletproof, chain, curve, dvm, elgamal, hash_to_point, innerproduct, keccak, pedersen, rpc_addr, statement, transaction};
+pub use dero_crypto::{block, bulletproof, chain, curve, dvm, elgamal, hash_to_point, innerproduct, keccak, pedersen, rpc_addr, rpc_args, statement, transaction};
 
 /// `arkworks` BN254 types re-exported for developers who need the group math.
 pub use ark_bn254::{G1Affine, G1Projective};

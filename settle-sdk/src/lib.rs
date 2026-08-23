@@ -13,6 +13,9 @@
 
 use dero_rs::{Address, ConfidentialValue, G1Projective, PrimeField, PrimeGroup, Error as DeroError};
 
+/// Typed DERO daemon RPC client for preparing settlements.
+pub mod rpc;
+
 /// The settlement tier, mirroring RelayOS's two-tier commons/licensed model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tier {
