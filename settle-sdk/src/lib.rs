@@ -16,6 +16,9 @@ use dero_rs::{Address, ConfidentialValue, G1Projective, PrimeField, PrimeGroup, 
 /// Typed DERO daemon RPC client for preparing settlements.
 pub mod rpc;
 
+/// RelayOS-aligned settlement leg request shape.
+pub mod relay;
+
 /// The settlement tier, mirroring RelayOS's two-tier commons/licensed model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tier {
