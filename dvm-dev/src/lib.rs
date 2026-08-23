@@ -11,6 +11,9 @@
 use dero_rs::dvm::{parse_smart_contract, tokenize, SmartContract};
 use std::fmt;
 
+/// DVM contract execution harness (run functions against a simulated chain).
+pub mod runner;
+
 /// A parsed DVM smart contract with diagnostics.
 #[derive(Debug, Clone)]
 pub struct Contract {
@@ -123,5 +126,24 @@ mod tests {
         ctx.set("balance", 42);
         assert_eq!(ctx.get("balance"), 42);
         assert_eq!(ctx.get("missing"), 0);
+    }
+
+    #[test]
+    fn runner_builds_and_rejects_bad_entry() {
+        use crate::runner::ContractRunner;
+        use std::collections::HashMap;
+        // The runner wires a real SharedState into the DVM. We verify it
+        // constructs and that a bad (lowercase) entry point is rejected by the
+        // DVM's own validation — proving the execution path is connected.
+        let src = r#"Function GetAnswer() Uint64
+10 RETURN 42
+End Function"#;
+        let contract = parse_contract(src).expect("parse ok");
+        let mut runner = ContractRunner::new();
+        // Lowercase entry point -> DVM rejects ("First character must be Capital")
+        let err = runner
+            .execute(&contract, "getAnswer", &HashMap::new())
+            .expect_err("lowercase entry point should be rejected");
+        assert!(err.contains("Capital") || err.contains("Invalid function"));
     }
 }
