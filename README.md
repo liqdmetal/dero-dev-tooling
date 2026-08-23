@@ -2,7 +2,7 @@
 
 DERO developer-tooling platform — built on [`derohe-rs`](https://github.com/liqdmetal/derohe-rs) (the diff-verified Rust implementation of DERO's confidential crypto).
 
-The thesis: DERO's dev-tooling is thin, and `derohe-rs` is the rarest asset in the ecosystem (full ElGamal + bulletproofs + Pedersen + DVM + transactions, differential-tested against the Go reference). This workspace makes that crypto **consumable by ordinary developers** — and feeds the RelayOS rail's two-tier model.
+The thesis: DERO's dev-tooling is thin, and `derohe-rs` is the rarest asset in the ecosystem (full ElGamal + bulletproofs + Pedersen + DVM + transactions, differential-tested against the Go reference). This workspace makes that crypto **consumable by ordinary developers** — 
 
 ## Crates
 
