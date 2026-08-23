@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = [
+    "dero-rs",
+    "dvm-dev",
+    "tela-toolkit",
+    "settle-sdk",
+]

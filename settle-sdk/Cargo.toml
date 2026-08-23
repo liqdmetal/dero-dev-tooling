@@ -1,0 +1,11 @@
+[package]
+name = "settle-sdk"
+version = "0.1.0"
+edition = "2021"
+description = "Confidential-settlement API for ordinary developers, wrapping dero-rs. On-ramp to the RelayOS rail."
+
+[dependencies]
+dero-rs = { path = "../dero-rs" }
+thiserror = "2"
+
+[dev-dependencies]

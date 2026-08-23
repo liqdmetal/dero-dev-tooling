@@ -1,0 +1,10 @@
+[package]
+name = "tela-toolkit"
+version = "0.1.0"
+edition = "2021"
+description = "TELA dApp generator — create-react-app for DERO's decentralized web."
+
+[dependencies]
+thiserror = "2"
+
+[dev-dependencies]

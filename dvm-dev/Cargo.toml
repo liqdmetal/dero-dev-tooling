@@ -1,0 +1,11 @@
+[package]
+name = "dvm-dev"
+version = "0.1.0"
+edition = "2021"
+description = "DERO DVM smart-contract development environment (parse, deploy, test) — hardhat-for-DERO."
+
+[dependencies]
+dero-rs = { path = "../dero-rs" }
+thiserror = "2"
+
+[dev-dependencies]

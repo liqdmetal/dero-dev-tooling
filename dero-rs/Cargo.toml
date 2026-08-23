@@ -1,0 +1,17 @@
+[package]
+name = "dero-rs"
+version = "0.1.0"
+edition = "2021"
+description = "Ergonomic Rust SDK for building on DERO's confidential settlement. Wraps dero-crypto (diff-verified ElGamal, bulletproofs, Pedersen, DVM, transactions)."
+
+[dependencies]
+dero-crypto = { path = "../../derohe-rs/crypto" }
+ark-bn254 = "0.5"
+ark-ec = "0.5"
+ark-ff = "0.5"
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[dev-dependencies]
