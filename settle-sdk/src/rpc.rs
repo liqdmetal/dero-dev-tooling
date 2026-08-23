@@ -37,6 +37,27 @@ impl Client {
         Self { url: format!("http://{host}:{port}/json_rpc") }
     }
 
+    /// Query the balance of a DERO address on the daemon chain.
+    ///
+    /// Uses `get_balance` with the standard scid argument. Returns the raw
+    /// result JSON so the caller can decode it; the daemon must be running.
+    /// This is a read-only prepare step.
+    pub fn get_balance(&self, address: &str) -> Result<Value, RpcError> {
+        let params = Arguments(vec![
+            Argument {
+                name: "address".into(),
+                data_type: 1, // string
+                value: ArgValue::Str(address.into()),
+            },
+            Argument {
+                name: "scid".into(),
+                data_type: 1, // string (0x0000... for main DERO)
+                value: ArgValue::Str("0000000000000000000000000000000000000000000000000000000000000000".into()),
+            },
+        ]);
+        self.call("get_balance", &params)
+    }
+
     /// Call a daemon method with `Arguments` params.
     pub fn call(&self, method: &str, params: &Arguments) -> Result<Value, RpcError> {
         // Marshal params to the daemon's binary form for the body.
