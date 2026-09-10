@@ -2,7 +2,7 @@
 
 DERO developer-tooling platform — built on [`derohe-rs`](https://github.com/liqdmetal/derohe-rs) (the diff-verified Rust implementation of DERO's confidential crypto).
 
-The thesis: DERO's dev-tooling is thin, and `derohe-rs` is the rarest asset in the ecosystem (full ElGamal + bulletproofs + Pedersen + DVM + transactions, differential-tested against the Go reference). This workspace makes that crypto **consumable by ordinary developers** — 
+The thesis: DERO's dev-tooling is thin, and `derohe-rs` is the rarest asset in the ecosystem (full ElGamal + bulletproofs + Pedersen + DVM + transactions, differential-tested against the Go reference). This workspace makes that crypto **consumable by ordinary developers** — parse an address, commit an amount confidentially, parse and run a contract, scaffold a dApp — without writing group arithmetic, Pedersen commitments, or bulletproof internals by hand.
 
 ## Crates
 
@@ -28,6 +28,11 @@ cargo run -p tela-toolkit -- --name demo --force   # explicitly overwrite genera
 The same gates are available as `make ci` when GNU Make is installed. CI runs
 the format, check, test, clippy, and rustdoc gates on every push and pull request.
 On Windows, run the `cargo` commands directly from the table above.
+
+CI (`.github/workflows/ci.yml`) checks out the pinned `derohe-rs` revision into
+`./derohe-rs` before Cargo runs. `liqdmetal/derohe-rs` is **private**, so the
+workflow requires a `DEROHE_RS_TOKEN` repository secret with read access to it;
+without that secret the dependency checkout fails before any Rust gate runs.
 
 ## Security boundary
 
