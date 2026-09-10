@@ -7,6 +7,7 @@
 //! Target: DVM v151 only (dero-crypto's DVM is the v151 AS-IS set; v9/verify_proof
 //! /K0 are Go track-B and NOT in dero-rs).
 #![forbid(unsafe_code)]
+#![deny(missing_docs)]
 
 use dero_rs::dvm::{parse_smart_contract, tokenize, SmartContract};
 use std::fmt;

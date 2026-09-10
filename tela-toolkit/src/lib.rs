@@ -9,6 +9,7 @@
 //! structure so a developer starts from a working skeleton instead of a
 //! blank page.
 #![forbid(unsafe_code)]
+#![deny(missing_docs)]
 
 use serde::Serialize;
 use std::fmt;
