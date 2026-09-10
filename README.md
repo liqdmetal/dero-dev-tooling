@@ -16,10 +16,29 @@ The thesis: DERO's dev-tooling is thin, and `derohe-rs` is the rarest asset in t
 ## Building & testing
 
 ```bash
-cargo build          # whole workspace
-cargo test           # all crates
+cargo build --workspace --all-targets
+cargo test --workspace --all-targets
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo doc --workspace --all-features --no-deps
 cargo run -p tela-toolkit -- --name demo   # scaffold a TELA dApp
+cargo run -p tela-toolkit -- --name demo --force   # explicitly overwrite generated files
 ```
+
+The same gates are available as `make ci` when GNU Make is installed. CI runs
+the format, check, test, clippy, and rustdoc gates on every push and pull request.
+On Windows, run the `cargo` commands directly from the table above.
+
+## Security boundary
+
+`dero-rs::build_settlement` and `settle-sdk::settle` use OS-provided CSPRNG
+randomness for commitment blinding. They construct confidential values; they do
+not sign, broadcast, or claim that a transaction is valid on mainnet. The RPC
+client is read/prepare-only. Broadcasting remains an explicit, caller-gated
+operation outside this workspace.
+
+The SDK currently consumes `../derohe-rs/crypto` as a path dependency. Clone
+`liqdmetal/derohe-rs` beside this repository before building.
 
 ## DVM scope
 

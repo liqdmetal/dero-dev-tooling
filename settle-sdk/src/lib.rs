@@ -1,6 +1,7 @@
 //! # settle-sdk
 //!
-//! A confidential-settlement API for ordinary developers, built on [`dero-rs`].
+//! A confidential-settlement API for ordinary developers, built on the
+//! `dero-rs` crate.
 //! A normal developer calls [`settle`] and gets a confidential DERO settlement —
 //! without touching ElGamal, bulletproofs, or group arithmetic.
 //!
@@ -11,7 +12,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
-use dero_rs::{Address, ConfidentialValue, G1Projective, PrimeField, PrimeGroup, Error as DeroError};
+use dero_rs::{Address, ConfidentialValue, Error as DeroError};
 
 /// Typed DERO daemon RPC client for preparing settlements.
 pub mod rpc;
@@ -32,6 +33,17 @@ pub enum Tier {
 }
 
 impl Tier {
+    /// The greatest fee representable as a percentage in basis points.
+    pub const MAX_FEE_BPS: u32 = 10_000;
+
+    /// Construct a validated Licensed tier.
+    pub fn licensed(fee_bps: u32) -> Result<Self, SettleError> {
+        if fee_bps == 0 || fee_bps > Self::MAX_FEE_BPS {
+            return Err(SettleError::InvalidFeeBps { fee_bps });
+        }
+        Ok(Self::Licensed { fee_bps })
+    }
+
     /// The per-settlement fee in basis points (0 for Commons).
     pub fn fee_bps(&self) -> u32 {
         match self {
@@ -60,7 +72,7 @@ pub struct Settlement {
 #[derive(Debug, Clone)]
 pub enum Outcome {
     /// Settlement constructed successfully.
-    Constructed(Settlement),
+    Constructed(Box<Settlement>),
     /// The settlement was rejected (e.g. invalid address or tier mismatch).
     Rejected {
         /// Why the settlement was rejected.
@@ -77,9 +89,18 @@ pub enum SettleError {
     /// A Licensed settlement was attempted without a valid fee.
     #[error("licensed settlement requires a valid fee")]
     LicensedFeeRequired,
+    /// A fee is outside the inclusive 1..=10,000 bps range.
+    #[error("invalid fee_bps {fee_bps}; expected 1..={max}", max = Tier::MAX_FEE_BPS)]
+    InvalidFeeBps {
+        /// The rejected fee.
+        fee_bps: u32,
+    },
     /// A cryptographic decode failed.
     #[error("crypto decode failed: {0}")]
     CryptoDecode(String),
+    /// The operating system could not provide secure randomness.
+    #[error("secure randomness unavailable: {0}")]
+    Randomness(String),
 }
 
 /// Settle `amount` (in atomic units) from `from` to `to` confidentially.
@@ -97,33 +118,38 @@ pub fn settle(from: &str, to: &str, amount: u64, tier: Tier) -> Result<Outcome, 
         Err(e) => return Ok(Outcome::Rejected { reason: format!("bad recipient address: {e}") }),
     };
 
-    // A Licensed settlement must carry a non-zero fee.
+    // Keep direct enum construction safe for callers inside this crate too.
     if let Tier::Licensed { fee_bps } = tier {
         if fee_bps == 0 {
             return Err(SettleError::LicensedFeeRequired);
+        }
+        if fee_bps > Tier::MAX_FEE_BPS {
+            return Err(SettleError::InvalidFeeBps { fee_bps });
         }
     }
 
     let value = build_confidential_value(&to, amount)?;
     let fee_bps = tier.fee_bps();
 
-    Ok(Outcome::Constructed(Settlement { from, to, value, tier, fee_bps }))
+    Ok(Outcome::Constructed(Box::new(Settlement { from, to, value, tier, fee_bps })))
 }
 
 /// Build a confidential value commitment to `amount` for recipient `to`.
 fn build_confidential_value(to: &Address, amount: u64) -> Result<ConfidentialValue, SettleError> {
     let mut amt = [0u8; 32];
     amt[..8].copy_from_slice(&amount.to_le_bytes());
-    // NOTE: production must use secure randomness (e.g. from a CSPRNG). This is
-    // a deterministic placeholder for the harness.
-    let randomness = [0u8; 32];
-    let pk = dero_rs::curve::decode_compressed(&to.compressed).map_err(SettleError::CryptoDecode)?;
+    let mut randomness = [0u8; 32];
+    getrandom::getrandom(&mut randomness)
+        .map_err(|error| SettleError::Randomness(error.to_string()))?;
+    let pk = dero_rs::curve::decode_compressed(to.compressed_key())
+        .map_err(SettleError::CryptoDecode)?;
     Ok(ConfidentialValue::commit_to(&pk, &amt, &randomness))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use dero_rs::{G1Projective, PrimeGroup};
 
     /// A synthetic 33-byte compressed point (valid length). In production these
     /// come from real DERO addresses; here we test the tier/fee logic.
@@ -132,7 +158,8 @@ mod tests {
         let g = G1Projective::generator();
         let mut comp = dero_rs::curve::encode_compressed(&g);
         comp[0] = tag; // vary the tag so addresses differ
-        dero_rs::rpc_addr::compressed_to_address(&comp).unwrap_or_else(|_| "dero1qplaceholder".into())
+        dero_rs::rpc_addr::compressed_to_address(&comp)
+            .unwrap_or_else(|_| "dero1qplaceholder".into())
     }
 
     #[test]
@@ -150,10 +177,17 @@ mod tests {
     }
 
     #[test]
+    fn fee_bounds_are_enforced() {
+        assert!(Tier::licensed(0).is_err());
+        assert!(Tier::licensed(Tier::MAX_FEE_BPS).is_ok());
+        assert!(Tier::licensed(Tier::MAX_FEE_BPS + 1).is_err());
+    }
+
+    #[test]
     fn licensed_settlement_carries_fee() {
         let a = synth_address(4);
         let b = synth_address(5);
-        let out = settle(&a, &b, 1000, Tier::Licensed { fee_bps: 150 }).unwrap();
+        let out = settle(&a, &b, 1000, Tier::licensed(150).unwrap()).unwrap();
         match out {
             Outcome::Constructed(s) => assert_eq!(s.fee_bps, 150),
             Outcome::Rejected { reason } => panic!("unexpected reject: {reason}"),

@@ -1,0 +1,49 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [main, master, 'feat/**', 'fix/**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+      - name: Check out derohe-rs path dependency
+        uses: actions/checkout@v4
+        with:
+          repository: liqdmetal/derohe-rs
+          ref: 93d3c4b0815664870b7a3261368a0da63e57e76c
+          path: derohe-rs
+          # Set DEROHE_RS_TOKEN if the dependency repository is private.
+          token: ${{ secrets.DEROHE_RS_TOKEN || github.token }}
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Check
+        run: cargo check --workspace --all-targets
+      - name: Test
+        run: cargo test --workspace --all-targets
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Documentation
+        run: cargo doc --workspace --all-features --no-deps

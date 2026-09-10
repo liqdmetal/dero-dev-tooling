@@ -1,8 +1,8 @@
 //! # dero-rs
 //!
 //! Ergonomic Rust SDK for building on DERO's confidential settlement.
-//! Wraps [`dero-crypto`] — the diff-verified Rust implementation of DERO's
-//! consensus crypto (ElGamal, bulletproofs, Pedersen, DVM, transactions).
+//! Wraps the `dero-crypto` crate — the diff-verified Rust implementation of
+//! DERO's consensus crypto (ElGamal, bulletproofs, Pedersen, DVM, transactions).
 //!
 //! The goal: a normal developer should be able to build a confidential
 //! settlement app without touching raw group arithmetic. This crate re-exports
@@ -24,8 +24,11 @@
 #![deny(missing_docs)]
 
 /// Low-level DERO consensus crypto, re-exported from the diff-verified
-/// [`dero-crypto`] crate.
-pub use dero_crypto::{block, bulletproof, chain, curve, dvm, elgamal, hash_to_point, innerproduct, keccak, pedersen, rpc_addr, rpc_args, statement, transaction};
+/// the `dero-crypto` crate.
+pub use dero_crypto::{
+    block, bulletproof, chain, curve, dvm, elgamal, hash_to_point, innerproduct, keccak, pedersen,
+    rpc_addr, rpc_args, statement, transaction,
+};
 
 /// `arkworks` BN254 types re-exported for developers who need the group math.
 pub use ark_bn254::{G1Affine, G1Projective};
@@ -48,17 +51,15 @@ pub enum Error {
 /// A DERO bech32 address.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Address {
-    /// The raw bech32 address string.
-    pub addr: String,
-    /// The 33-byte compressed public key.
-    pub compressed: Vec<u8>,
+    addr: String,
+    compressed: Vec<u8>,
 }
 
 impl Address {
     /// Parse a bech32 DERO address into its compressed public key.
     pub fn new(addr: &str) -> Result<Self, Error> {
-        let compressed = dero_crypto::rpc_addr::address_to_compressed(addr)
-            .map_err(Error::InvalidAddress)?;
+        let compressed =
+            dero_crypto::rpc_addr::address_to_compressed(addr).map_err(Error::InvalidAddress)?;
         Ok(Self { addr: addr.to_string(), compressed })
     }
 
@@ -67,6 +68,16 @@ impl Address {
         let addr = dero_crypto::rpc_addr::compressed_to_address(compressed)
             .map_err(Error::InvalidAddress)?;
         Ok(Self { addr, compressed: compressed.to_vec() })
+    }
+
+    /// Return the canonical bech32 address string.
+    pub fn as_str(&self) -> &str {
+        &self.addr
+    }
+
+    /// Return the validated compressed public-key bytes.
+    pub fn compressed_key(&self) -> &[u8] {
+        &self.compressed
     }
 }
 
@@ -92,10 +103,9 @@ impl ConfidentialValue {
     ///
     /// `value` and `randomness` are 32-byte little-endian scalars.
     pub fn new(value: &[u8; 32], randomness: &[u8; 32]) -> Self {
-        // The public "key" used for the commitment is the generator point; in a
-        // real settlement both parties derive it from the receiving address.
-        // Here we use the identity-generator placeholder; see
-        // [`ConfidentialValue::commit_to`] for a full commitment.
+        // The generator is a convenient public base for examples and tests.
+        // Production settlements should use [`ConfidentialValue::commit_to`]
+        // with the recipient's decoded public key.
         let base = G1Projective::generator();
         Self { inner: dero_crypto::elgamal::ElGamal::commit(&base, value, randomness) }
     }
@@ -134,20 +144,22 @@ impl ConfidentialValue {
 /// and confidential-value construction so a developer can settle without
 /// touching group arithmetic directly. The D1/D2 `settle-sdk` builds on this.
 pub fn build_settlement(
-    from: &Address,
+    _from: &Address,
     to: &Address,
     amount: u64,
 ) -> Result<ConfidentialValue, Error> {
     // amount as a 32-byte little-endian scalar
     let mut amt = [0u8; 32];
     amt[..8].copy_from_slice(&amount.to_le_bytes());
-    let randomness = [0u8; 32]; // NOTE: production must use secure randomness
+    let mut randomness = [0u8; 32];
+    getrandom::getrandom(&mut randomness)
+        .map_err(|error| Error::Crypto(format!("secure randomness unavailable: {error}")))?;
     Ok(ConfidentialValue::commit_to(&to_key(to)?, &amt, &randomness))
 }
 
 /// Derive the recipient's public key point from their address.
 fn to_key(to: &Address) -> Result<G1Projective, Error> {
-    dero_crypto::curve::decode_compressed(&to.compressed).map_err(Error::Crypto)
+    dero_crypto::curve::decode_compressed(to.compressed_key()).map_err(Error::Crypto)
 }
 
 #[cfg(test)]
@@ -160,7 +172,7 @@ mod tests {
         // Test the compressed->address->compressed roundtrip with a synthetic key.
         let pk = [0u8; 33];
         let addr = Address::from_compressed(&pk).unwrap();
-        assert_eq!(addr.compressed, pk.to_vec());
+        assert_eq!(addr.compressed_key(), pk);
     }
 
     #[test]

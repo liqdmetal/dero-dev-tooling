@@ -12,6 +12,8 @@
 //!     transition error when a natural person outgrows commons.
 //!   * the fee attaches to the SETTLEMENT, not the node.
 
+use dero_rs::Address;
+
 /// Operator entity class (mirrors RelayOS operator_registry).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityClass {
@@ -58,10 +60,28 @@ impl SettlementLegRequest {
         entity_class: EntityClass,
         authorized_evidence_keys: Vec<String>,
     ) -> Result<Self, String> {
+        let operator_id = operator_id.into();
+        let recipient = recipient.into();
+        if operator_id.trim().is_empty() {
+            return Err("operator_id must not be empty".into());
+        }
+        if recipient.trim().is_empty() {
+            return Err("recipient must not be empty".into());
+        }
+        Address::new(&recipient).map_err(|error| format!("invalid DERO recipient: {error}"))?;
         if amount > 0 && authorized_evidence_keys.is_empty() {
-            return Err(
-                "amount>0 leg requires authorized_evidence_keys (F1)".into(),
-            );
+            return Err("amount>0 leg requires authorized_evidence_keys (F1)".into());
+        }
+        let mut keys = authorized_evidence_keys;
+        keys.iter_mut().for_each(|key| *key = key.trim().to_string());
+        if keys.iter().any(String::is_empty) {
+            return Err("authorized evidence keys must not be empty".into());
+        }
+        let mut unique = keys.clone();
+        unique.sort();
+        unique.dedup();
+        if unique.len() != keys.len() {
+            return Err("authorized evidence keys must be unique".into());
         }
         let foundation_contribution_bps = if entity_class.is_commons() {
             0
@@ -69,11 +89,11 @@ impl SettlementLegRequest {
             149 // per RelayOS licensed node fee-share floor
         };
         Ok(Self {
-            operator_id: operator_id.into(),
-            recipient: recipient.into(),
+            operator_id,
+            recipient,
             amount,
             entity_class,
-            authorized_evidence_keys,
+            authorized_evidence_keys: keys,
             foundation_contribution_bps,
         })
     }
@@ -92,10 +112,16 @@ impl SettlementLegRequest {
 mod tests {
     use super::*;
 
+    const RECIPIENT: &str = "dero1qywrzl2mc2juju4ryqassffu47pmevmns909jnrq9jurdpveyvh27qgke8uqz";
+
     #[test]
     fn natural_person_is_commons() {
         let leg = SettlementLegRequest::new(
-            "op1", "recipient", 1000, EntityClass::NaturalPerson, vec!["key1".into()],
+            "op1",
+            RECIPIENT,
+            1000,
+            EntityClass::NaturalPerson,
+            vec!["key1".into()],
         )
         .expect("natural person with evidence ok");
         assert_eq!(leg.tier_label(), "Commons");
@@ -105,7 +131,11 @@ mod tests {
     #[test]
     fn legal_entity_is_licensed_with_fee() {
         let leg = SettlementLegRequest::new(
-            "op2", "recipient", 1000, EntityClass::LegalEntity, vec!["key2".into()],
+            "op2",
+            RECIPIENT,
+            1000,
+            EntityClass::LegalEntity,
+            vec!["key2".into()],
         )
         .expect("legal entity with evidence ok");
         assert_eq!(leg.tier_label(), "Licensed");
@@ -114,19 +144,17 @@ mod tests {
 
     #[test]
     fn f1_requires_evidence_keys_on_payment() {
-        let err = SettlementLegRequest::new(
-            "op3", "recipient", 1000, EntityClass::NaturalPerson, vec![],
-        )
-        .expect_err("amount>0 without evidence keys must fail");
+        let err =
+            SettlementLegRequest::new("op3", RECIPIENT, 1000, EntityClass::NaturalPerson, vec![])
+                .expect_err("amount>0 without evidence keys must fail");
         assert!(err.contains("F1"));
     }
 
     #[test]
     fn zero_amount_leg_may_omit_evidence() {
-        let leg = SettlementLegRequest::new(
-            "op4", "recipient", 0, EntityClass::NaturalPerson, vec![],
-        )
-        .expect("zero-amount delivery leg ok without evidence");
+        let leg =
+            SettlementLegRequest::new("op4", RECIPIENT, 0, EntityClass::NaturalPerson, vec![])
+                .expect("zero-amount delivery leg ok without evidence");
         assert_eq!(leg.amount, 0);
     }
 }

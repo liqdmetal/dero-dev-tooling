@@ -58,12 +58,9 @@ pub fn parse_contract(source: &str) -> Result<Contract, String> {
 pub fn analyze(source: &str) -> Result<ContractReport, String> {
     let contract = parse_contract(source)?;
     let tokens = tokenize(source);
-    let functions = contract
-        .parsed
-        .functions
-        .values()
-        .map(|f| f.name.clone())
-        .collect::<Vec<_>>();
+    let mut functions =
+        contract.parsed.functions.values().map(|f| f.name.clone()).collect::<Vec<_>>();
+    functions.sort();
     Ok(ContractReport {
         ok: true,
         function_count: contract.parsed.functions.len(),
@@ -92,9 +89,14 @@ impl SimContext {
         self.store.insert(key.to_string(), value);
     }
 
-    /// Get a storage value (0 if absent).
-    pub fn get(&self, key: &str) -> u64 {
-        self.store.get(key).copied().unwrap_or(0)
+    /// Get a storage value, preserving the distinction between absent and zero.
+    pub fn get(&self, key: &str) -> Option<u64> {
+        self.store.get(key).copied()
+    }
+
+    /// Get a storage value, treating an absent key as zero.
+    pub fn get_or_zero(&self, key: &str) -> u64 {
+        self.get(key).unwrap_or(0)
     }
 }
 
@@ -124,8 +126,9 @@ mod tests {
     fn sim_context_roundtrip() {
         let mut ctx = SimContext::new();
         ctx.set("balance", 42);
-        assert_eq!(ctx.get("balance"), 42);
-        assert_eq!(ctx.get("missing"), 0);
+        assert_eq!(ctx.get("balance"), Some(42));
+        assert_eq!(ctx.get("missing"), None);
+        assert_eq!(ctx.get_or_zero("missing"), 0);
     }
 
     #[test]

@@ -1,13 +1,11 @@
 //! DVM contract execution harness — run a parsed contract's functions against a
 //! simulated chain context (gas limits, storage) without touching mainnet.
 //!
-//! This is the "run" half of dvm-dev: after [`parse_contract`](crate::parse_contract)
-//! you can [`execute`](crate::ContractRunner::execute) a function and inspect the
-//! return value, gas used, and storage — iterate on contract logic locally.
+//! This is the "run" half of dvm-dev: after `parse_contract`, callers can
+//! execute a function and inspect the return value, gas used, and storage —
+//! iterate on contract logic locally.
 
-use dero_rs::dvm::{
-    run_smart_contract, BlockchainInput, SharedState, TXStorage, Variable,
-};
+use dero_rs::dvm::{run_smart_contract, BlockchainInput, SharedState, TXStorage, Variable};
 use std::collections::HashMap;
 
 /// A configurable execution context for a DVM contract.
@@ -47,6 +45,7 @@ impl ContractRunner {
             store: TXStorage {
                 scid: [0u8; 32],
                 raw_keys: HashMap::new(),
+                transfers: HashMap::new(),
                 state: None,
             },
         }
@@ -81,6 +80,9 @@ impl ContractRunner {
             rnd: dero_rs::dvm::initialize_rnd(&[0u8; 32], &[0u8; 32], &[0u8; 32]),
         };
 
+        // The interpreter's storage helpers charge gas through this back-reference.
+        // Keep the same initialized snapshot used by dero-crypto's reference harness.
+        state.store.state = Some(state.clone());
         let ret = run_smart_contract(&contract.parsed, entry_point, &mut state, params)?;
         self.store = *state.store;
         Ok(ExecResult {

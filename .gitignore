@@ -2,3 +2,16 @@
 **/target
 .hermes/
 *.exe
+*.pdb
+*.dSYM/
+
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# Editor and OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

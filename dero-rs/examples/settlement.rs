@@ -14,11 +14,8 @@ fn main() {
     amt[..8].copy_from_slice(&1000u64.to_le_bytes());
     let randomness = [7u8; 32]; // NOTE: production uses secure randomness
 
-    let commit = ConfidentialValue::commit_to(
-        &dero_rs::G1Projective::generator(),
-        &amt,
-        &randomness,
-    );
+    let commit =
+        ConfidentialValue::commit_to(&dero_rs::G1Projective::generator(), &amt, &randomness);
 
     println!("recipient: {}", to);
     println!("confidential value serialized ({} bytes):", commit.serialize().len());
