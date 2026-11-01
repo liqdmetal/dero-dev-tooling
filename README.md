@@ -29,10 +29,8 @@ The same gates are available as `make ci` when GNU Make is installed. CI runs
 the format, check, test, clippy, and rustdoc gates on every push and pull request.
 On Windows, run the `cargo` commands directly from the table above.
 
-CI (`.github/workflows/ci.yml`) checks out the pinned `derohe-rs` revision into
-`./derohe-rs` before Cargo runs. `liqdmetal/derohe-rs` is **private**, so the
-workflow requires a `DEROHE_RS_TOKEN` repository secret with read access to it;
-without that secret the dependency checkout fails before any Rust gate runs.
+CI (`.github/workflows/ci.yml`) checks out the pinned public `derohe-rs`
+revision into `./derohe-rs` before Cargo runs — no credentials needed.
 
 ## Security boundary
 
@@ -51,4 +49,9 @@ The SDK currently consumes `../derohe-rs/crypto` as a path dependency. Clone
 
 ## Licensing
 
-The workspace wraps `derohe-rs`, which is under the DERO Research License. Derivative work must respect that license (see `derohe-rs/LICENSE`).
+The workspace wraps `derohe-rs`, whose Rust core (including the `crypto`
+crate used here) is BSD-3-Clause; only the Go `oracle/` harness keeps the
+DERO Research License. Derivative work must respect those terms (see
+`derohe-rs/LICENSE` and `derohe-rs/NOTICE`).
+
+Questions: `FAQ.md`.
